@@ -21,6 +21,52 @@ on:
       embedded-key:
         type: string
         default: ""
+      build-windows-flutter:
+        type: boolean
+        default: true
+      build-windows-sciter:
+        type: boolean
+        default: true
+      build-ios:
+        type: boolean
+        default: true
+      build-macos:
+        type: boolean
+        default: true
+      publish-unsigned:
+        type: boolean
+        default: true
+      build-android:
+        type: boolean
+        default: true
+      build-android-universal:
+        type: boolean
+        default: true
+      build-linux:
+        type: boolean
+        default: true
+      linux-build-matrix:
+        type: string
+        default: >-
+          [{"arch":"x86_64","target":"x86_64-unknown-linux-gnu","distro":"ubuntu18.04","on":"ubuntu-22.04","deb_arch":"amd64","vcpkg-triplet":"x64-linux"},{"arch":"aarch64","target":"aarch64-unknown-linux-gnu","distro":"ubuntu18.04","on":"ubuntu-22.04-arm","deb_arch":"arm64","vcpkg-triplet":"arm64-linux"}]
+      build-linux-rpm:
+        type: boolean
+        default: true
+      build-linux-arch-package:
+        type: boolean
+        default: true
+      build-linux-sciter:
+        type: boolean
+        default: true
+      build-appimage:
+        type: boolean
+        default: true
+      build-flatpak:
+        type: boolean
+        default: true
+      build-web:
+        type: boolean
+        default: true
 
 # NOTE: F-Droid builder script 'flutter/build_fdroid.sh' reads environment
 # variables from this workflow!
@@ -68,6 +114,7 @@ jobs:
     uses: ./.github/workflows/bridge.yml
 
   build-RustDeskTempTopMostWindow:
+    if: ${{ inputs.build-windows-flutter }}
     uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
     with:
       upload-artifact: ${{ inputs.upload-artifact }}
@@ -79,6 +126,7 @@ jobs:
       fail-fast: false
 
   build-for-windows-flutter:
+    if: ${{ inputs.build-windows-flutter }}
     name: ${{ matrix.job.target }}
     needs: [build-RustDeskTempTopMostWindow, generate-bridge]
     runs-on: ${{ matrix.job.os }}
@@ -299,6 +347,7 @@ jobs:
 
   # The fallback for the flutter version, we use Sciter for 32bit Windows.
   build-for-windows-sciter:
+    if: ${{ inputs.build-windows-sciter }}
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     # Temporarily disable this action due to additional test is needed.
@@ -449,7 +498,7 @@ jobs:
             ./SignOutput/rustdesk-*.exe
 
   build-rustdesk-ios:
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.build-ios && inputs.upload-artifact }}
     name: build rustdesk ios ipa
     runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
@@ -569,6 +618,7 @@ jobs:
 
 
   build-for-macOS:
+    if: ${{ inputs.build-macos }}
     name: ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
@@ -787,6 +837,7 @@ jobs:
             rustdesk*-${{ matrix.job.arch }}.dmg
 
   publish_unsigned:
+    if: ${{ inputs.publish-unsigned }}
     needs:
       - build-for-macOS
       - build-for-windows-flutter
@@ -830,6 +881,7 @@ jobs:
           files: rustdesk-${{ env.VERSION }}-unsigned.tar.gz
 
   build-rustdesk-android:
+    if: ${{ inputs.build-android }}
     needs: [generate-bridge]
     name: build rustdesk android apk ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
@@ -1122,9 +1174,9 @@ jobs:
             signed-apk/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
 
   build-rustdesk-android-universal:
+    if: ${{ inputs.build-android-universal && inputs.upload-artifact }}
     needs: [build-rustdesk-android]
     name: build rustdesk android universal apk
-    if: ${{ inputs.upload-artifact }}
     runs-on: ubuntu-24.04
     env:
       reltype: release
@@ -1306,30 +1358,14 @@ jobs:
             signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
 
   build-rustdesk-linux:
+    if: ${{ inputs.build-linux }}
     needs: [generate-bridge]
     name: build rustdesk linux ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.on }}
     strategy:
       fail-fast: false
       matrix:
-        # use a high level qemu-user-static
-        job:
-          - {
-              arch: x86_64,
-              target: x86_64-unknown-linux-gnu,
-              distro: ubuntu18.04,
-              on: ubuntu-22.04,
-              deb_arch: amd64,
-              vcpkg-triplet: x64-linux,
-            }
-          - {
-              arch: aarch64,
-              target: aarch64-unknown-linux-gnu,
-              distro: ubuntu18.04,
-              on: ubuntu-22.04-arm,
-              deb_arch: arm64,
-              vcpkg-triplet: arm64-linux,
-            }
+        job: ${{ fromJson(inputs.linux-build-matrix) }}
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v6
@@ -1570,34 +1606,36 @@ jobs:
             done
 
             # rpm package
-            echo -e "start packaging fedora package"
-            pushd /workspace
-            case ${{ matrix.job.arch }} in
-              aarch64)
-                sed -i "s/linux\/x64/linux\/arm64/g" ./res/rpm-flutter.spec
-                ;;
-            esac
-            HBB=`pwd` rpmbuild ./res/rpm-flutter.spec -bb
-            pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
-            for name in rustdesk*??.rpm; do
-                mv "$name" /workspace/"${name%%.rpm}.rpm"
-            done
+            if [[ "${{ inputs.build-linux-rpm }}" == "true" ]]; then
+              echo -e "start packaging fedora package"
+              pushd /workspace
+              case ${{ matrix.job.arch }} in
+                aarch64)
+                  sed -i "s/linux\/x64/linux\/arm64/g" ./res/rpm-flutter.spec
+                  ;;
+              esac
+              HBB=`pwd` rpmbuild ./res/rpm-flutter.spec -bb
+              pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
+              for name in rustdesk*??.rpm; do
+                  mv "$name" /workspace/"${name%%.rpm}.rpm"
+              done
 
-            # rpm suse package
-            echo -e "start packaging suse package"
-            pushd /workspace
-            case ${{ matrix.job.arch }} in
-              aarch64)
-                sed -i "s/linux\/x64/linux\/arm64/g" ./res/rpm-flutter-suse.spec
-                ;;
-            esac
-            HBB=`pwd` rpmbuild ./res/rpm-flutter-suse.spec -bb
-            pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
-            for name in rustdesk*??.rpm; do
-                mv "$name" /workspace/"${name%%.rpm}-suse.rpm"
-            done
+              # rpm suse package
+              echo -e "start packaging suse package"
+              pushd /workspace
+              case ${{ matrix.job.arch }} in
+                aarch64)
+                  sed -i "s/linux\/x64/linux\/arm64/g" ./res/rpm-flutter-suse.spec
+                  ;;
+              esac
+              HBB=`pwd` rpmbuild ./res/rpm-flutter-suse.spec -bb
+              pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
+              for name in rustdesk*??.rpm; do
+                  mv "$name" /workspace/"${name%%.rpm}-suse.rpm"
+              done
+            fi
 
-      - name: Publish debian/rpm package
+      - name: Publish deb package
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@v1
         with:
@@ -1605,6 +1643,14 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           files: |
             rustdesk-*.deb
+
+      - name: Publish rpm package
+        if: inputs.build-linux-rpm && env.UPLOAD_ARTIFACT == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: true
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
             rustdesk-*.rpm
 
       - name: Upload deb
@@ -1618,7 +1664,7 @@ jobs:
       # old arch image does not make sense for arch since it is "arch" which always update to date
       # and failed to makepkg arm64 on x86_64
       - name: Patch archlinux PKGBUILD
-        if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
+        if: inputs.build-linux-arch-package && matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
         run: |
           sed -i "s/x86_64/${{ matrix.job.arch }}/g" res/PKGBUILD
           if [[ "${{ matrix.job.arch }}" == "aarch64" ]]; then
@@ -1626,7 +1672,7 @@ jobs:
           fi
 
       - name: Build archlinux package
-        if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
+        if: inputs.build-linux-arch-package && matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
         uses: rustdesk-org/arch-makepkg-action@master
         with:
           packages:
@@ -1634,7 +1680,7 @@ jobs:
             cd res && HBB=`pwd`/.. FLUTTER=1 makepkg -f
 
       - name: Publish archlinux package
-        if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
+        if: inputs.build-linux-arch-package && matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: true
@@ -1643,7 +1689,7 @@ jobs:
             res/rustdesk-${{ env.VERSION }}*.zst
 
   build-rustdesk-linux-sciter:
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.build-linux-sciter && inputs.upload-artifact }}
     runs-on: ${{ matrix.job.on }}
     name: build-rustdesk-linux-sciter ${{ matrix.job.target }}
     strategy:
@@ -1873,7 +1919,7 @@ jobs:
     name: Build appimage ${{ matrix.job.target }}
     needs: [build-rustdesk-linux]
     runs-on: ubuntu-22.04
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.build-appimage && inputs.upload-artifact }}
     strategy:
       fail-fast: false
       matrix:
@@ -1925,7 +1971,7 @@ jobs:
       - build-rustdesk-linux
       - build-rustdesk-linux-sciter
     runs-on: ${{ matrix.job.on }}
-    if: ${{ inputs.upload-artifact }}
+    if: ${{ inputs.build-flatpak && inputs.upload-artifact }}
     strategy:
       fail-fast: false
       matrix:
@@ -2005,7 +2051,7 @@ jobs:
             flatpak/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.flatpak
 
   build-rustdesk-web:
-    if: False
+    if: ${{ inputs.build-web && false }}
     name: build-rustdesk-web
     runs-on: ubuntu-22.04
     permissions:

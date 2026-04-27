@@ -35,3 +35,19 @@ jobs:
       embedded-relay-server: ${{ inputs.embedded-relay-server }}
       embedded-api-server: ${{ inputs.embedded-api-server }}
       embedded-key: ${{ inputs.embedded-key }}
+      build-windows-flutter: true
+      build-windows-sciter: false
+      build-ios: false
+      build-macos: false
+      publish-unsigned: false
+      build-android: false
+      build-android-universal: false
+      build-linux: true
+      linux-build-matrix: >-
+        [{"arch":"x86_64","target":"x86_64-unknown-linux-gnu","distro":"ubuntu18.04","on":"ubuntu-22.04","deb_arch":"amd64","vcpkg-triplet":"x64-linux"}]
+      build-linux-rpm: false
+      build-linux-arch-package: false
+      build-linux-sciter: false
+      build-appimage: false
+      build-flatpak: false
+      build-web: false
