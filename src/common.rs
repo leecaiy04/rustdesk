@@ -2089,6 +2089,7 @@ pub fn load_custom_client() {
     }
     let Some(path) = std::env::current_exe().map_or(None, |x| x.parent().map(|x| x.to_path_buf()))
     else {
+        apply_embedded_client_defaults();
         return;
     };
     #[cfg(target_os = "macos")]
@@ -2100,6 +2101,27 @@ pub fn load_custom_client() {
             return;
         };
         read_custom_client(&data.trim());
+        return;
+    }
+    apply_embedded_client_defaults();
+}
+
+fn apply_embedded_client_defaults() {
+    apply_embedded_client_option(
+        "custom-rendezvous-server",
+        option_env!("RUSTDESK_EMBEDDED_ID_SERVER"),
+    );
+    apply_embedded_client_option("relay-server", option_env!("RUSTDESK_EMBEDDED_RELAY_SERVER"));
+    apply_embedded_client_option("api-server", option_env!("RUSTDESK_EMBEDDED_API_SERVER"));
+    apply_embedded_client_option("key", option_env!("RUSTDESK_EMBEDDED_KEY"));
+}
+
+fn apply_embedded_client_option(key: &str, value: Option<&str>) {
+    let Some(value) = value.map(str::trim).filter(|value| !value.is_empty()) else {
+        return;
+    };
+    if Config::get_option(key).trim().is_empty() {
+        Config::set_option(key.into(), value.to_owned());
     }
 }
 

@@ -1,0 +1,37 @@
+name: Custom Flutter Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload-tag:
+        description: Release tag used for generated artifacts
+        required: true
+        default: custom
+      embedded-id-server:
+        description: Embedded ID server, e.g. 222869.xyz:21116
+        required: true
+        default: 222869.xyz:21116
+      embedded-relay-server:
+        description: Embedded relay server, e.g. 222869.xyz:21117
+        required: true
+        default: 222869.xyz:21117
+      embedded-api-server:
+        description: Embedded API server, e.g. http://222869.xyz:21114
+        required: true
+        default: http://222869.xyz:21114
+      embedded-key:
+        description: Embedded RustDesk public key
+        required: true
+        default: ""
+
+jobs:
+  run-custom-flutter-build:
+    uses: ./.github/workflows/flutter-build.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: ${{ inputs.upload-tag }}
+      embedded-id-server: ${{ inputs.embedded-id-server }}
+      embedded-relay-server: ${{ inputs.embedded-relay-server }}
+      embedded-api-server: ${{ inputs.embedded-api-server }}
+      embedded-key: ${{ inputs.embedded-key }}
