@@ -22,7 +22,7 @@ on:
       embedded-key:
         description: Embedded RustDesk public key
         required: true
-        default: ""
+        default: 0123456789
 
 jobs:
   run-custom-flutter-build:
