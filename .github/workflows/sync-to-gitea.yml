@@ -1,0 +1,19 @@
+name: Sync to Gitea
+on:
+  schedule:
+    - cron: \"17 */6 * * *\"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror all branches and tags
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --mirror \"https://github.com/${{ github.repository }}.git\" mirror.git
+          git -C mirror.git remote set-url --push origin \"https://leecaiy:${GITEA_TOKEN}@gitea.222869.xyz:50000/leecaiy/rustdesk.git\"
+          git -C mirror.git push --mirror
