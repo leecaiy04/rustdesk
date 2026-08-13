@@ -1,0 +1,39 @@
+name: Sync GitHub releases to Gitea
+on:
+  schedule:
+    - cron: '47 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sync-releases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync releases and assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          api='https://gitea.222869.xyz:50000/api/v1'
+          owner='leecaiy'
+          repo='rustdesk'
+          curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100" -o releases.json
+          jq -c '.[] | select(.draft == false)' releases.json | while read -r release; do
+            tag=$(jq -r '.tag_name' <<<"$release")
+            name=$(jq -r '.name // .tag_name' <<<"$release")
+            body=$(jq -r '.body // ""' <<<"$release")
+            existing=$(curl -fsSL -H "Authorization: token ${GITEA_TOKEN}" "$api/repos/$owner/$repo/releases/tags/$tag" || true)
+            if [ -z "$existing" ] || [ "$existing" = 'null' ]; then
+              payload=$(jq -n --arg tag "$tag" --arg name "$name" --arg body "$body" '{tag_name:$tag,target_commitish:"master",name:$name,body:$body,draft:false,prerelease:false}')
+              curl -fsSL -X POST -H "Authorization: token ${GITEA_TOKEN}" -H 'Content-Type: application/json' "$api/repos/$owner/$repo/releases" -d "$payload" -o created.json
+              existing=$(cat created.json)
+            fi
+            rid=$(jq -r '.id' <<<"$existing")
+            jq -c '.assets[]' <<<"$release" | while read -r asset; do
+              aname=$(jq -r '.name' <<<"$asset")
+              if curl -fsSL -H "Authorization: token ${GITEA_TOKEN}" "$api/repos/$owner/$repo/releases/$rid/assets" | jq -e --arg n "$aname" '.[] | select(.name == $n)' >/dev/null; then continue; fi
+              curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/octet-stream' "$(jq -r '.browser_download_url' <<<"$asset")" -o "$aname"
+              curl -fsSL -X POST -H "Authorization: token ${GITEA_TOKEN}" -H 'Content-Type: application/octet-stream' "$api/repos/$owner/$repo/releases/$rid/assets?name=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$aname")" --data-binary "@$aname"
+            done
+          done
