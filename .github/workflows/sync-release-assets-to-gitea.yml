@@ -18,13 +18,13 @@ jobs:
           api='https://gitea.222869.xyz:50000/api/v1'
           owner='leecaiy'
           repo='rustdesk'
-          repo_meta=$(curl -fsSL -H "Authorization: Bearer \${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/\${{ github.repository }}")
+          repo_meta=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${{ github.repository }}")
           description=$(jq -r '.description // ""' <<<"\$repo_meta")
           homepage=$(jq -r '.homepage // ""' <<<"\$repo_meta")
           default_branch=$(jq -r '.default_branch // "master"' <<<"\$repo_meta")
           metadata=$(jq -n --arg description "\$description" --arg homepage "\$homepage" --arg default_branch "\$default_branch" '{description:\$description,website:\$homepage,default_branch:\$default_branch}')
-          curl -fsSL -X PATCH -H "Authorization: token \${GITEA_TOKEN}" -H 'Content-Type: application/json' "\$api/repos/\$owner/\$repo" -d "\$metadata" >/dev/null
-          curl -fsSL -X POST -H "Authorization: token \${GITEA_TOKEN}" "\$api/repos/\$owner/\$repo/mirror-sync" >/dev/null || true          curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100" -o releases.json
+          curl -fsSL -X PATCH -H "Authorization: token ${GITEA_TOKEN}" -H 'Content-Type: application/json' "\$api/repos/\$owner/\$repo" -d "\$metadata" >/dev/null
+          curl -fsSL -X POST -H "Authorization: token ${GITEA_TOKEN}" "\$api/repos/\$owner/\$repo/mirror-sync" >/dev/null || true          curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100" -o releases.json
           jq -c '.[] | select(.draft == false)' releases.json | while read -r release; do
             tag=$(jq -r '.tag_name' <<<"$release")
             name=$(jq -r '.name // .tag_name' <<<"$release")
