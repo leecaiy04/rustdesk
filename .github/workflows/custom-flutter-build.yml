@@ -6,23 +6,26 @@ on:
       upload-tag:
         description: Release tag used for generated artifacts
         required: true
-        default: custom
+        default: custom-20261110
       embedded-id-server:
-        description: Embedded ID server, e.g. 222869.xyz:21116
+        description: Embedded ID server, e.g. rustdesk.222869.xyz:21116
         required: true
-        default: 222869.xyz:21116
+        default: rustdesk.222869.xyz:21116
       embedded-relay-server:
-        description: Embedded relay server, e.g. 222869.xyz:21117
+        description: Embedded relay server, e.g. rustdesk.222869.xyz:21117
         required: true
-        default: 222869.xyz:21117
+        default: rustdesk.222869.xyz:21117
       embedded-api-server:
-        description: Embedded API server, e.g. http://222869.xyz:21114
+        description: Embedded API server URL
         required: true
-        default: http://222869.xyz:21114
+        default: https://rustdesk.222869.xyz:45443
       embedded-key:
         description: Embedded RustDesk public key
-        required: true
-        default: 0123456789
+        required: false
+        default: ""
+
+permissions:
+  contents: write
 
 jobs:
   run-custom-flutter-build:
@@ -40,8 +43,8 @@ jobs:
       build-ios: false
       build-macos: false
       publish-unsigned: false
-      build-android: false
-      build-android-universal: false
+      build-android: true
+      build-android-universal: true
       build-linux: true
       linux-build-matrix: >-
         [{"arch":"x86_64","target":"x86_64-unknown-linux-gnu","distro":"ubuntu18.04","on":"ubuntu-22.04","deb_arch":"amd64","vcpkg-triplet":"x64-linux"}]
