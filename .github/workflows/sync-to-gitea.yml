@@ -21,6 +21,6 @@ jobs:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
           set -euo pipefail
+          export GIT_TERMINAL_PROMPT=0
           git remote add gitea "https://leecaiy:${GITEA_TOKEN}@git.222869.xyz:45443/leecaiy/rustdesk.git"
-          git fetch --unshallow origin master
           git push --force gitea HEAD:refs/heads/master
