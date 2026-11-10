@@ -2,9 +2,12 @@ name: Sync GitHub releases to Gitea
 on:
   release:
     types: [published]
-  schedule:
-    - cron: '47 */6 * * *'
   workflow_dispatch:
+    inputs:
+      release-tag:
+        description: Release tag to sync
+        required: true
+        default: custom-20261110
 permissions:
   contents: read
 jobs:
@@ -20,15 +23,22 @@ jobs:
           api='https://git.222869.xyz:45443/api/v1'
           owner='leecaiy'
           repo='rustdesk'
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag='${{ github.event.release.tag_name }}'
+          else
+            tag='${{ inputs.release-tag }}'
+          fi
           repo_meta=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${{ github.repository }}")
           description=$(jq -r '.description // ""' <<<"$repo_meta")
           homepage=$(jq -r '.homepage // ""' <<<"$repo_meta")
           default_branch=$(jq -r '.default_branch // "master"' <<<"$repo_meta")
           metadata=$(jq -n --arg description "$description" --arg homepage "$homepage" --arg default_branch "$default_branch" '{description:$description,website:$homepage,default_branch:$default_branch}')
           curl -fsSL -X PATCH -H "Authorization: token ${GITEA_TOKEN}" -H 'Content-Type: application/json' "$api/repos/$owner/$repo" -d "$metadata" >/dev/null || true
-          curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100" -o releases.json
-          jq -c '.[] | select(.draft == false)' releases.json | while read -r release; do
-            tag=$(jq -r '.tag_name' <<<"$release")
+          release=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag")
+          if [ "$(jq -r '.draft' <<<"$release")" != 'false' ]; then
+            echo "Release $tag is still a draft"
+            exit 1
+          fi
             name=$(jq -r '.name // .tag_name' <<<"$release")
             body=$(jq -r '.body // ""' <<<"$release")
             existing=$(curl -fsSL -H "Authorization: token ${GITEA_TOKEN}" "$api/repos/$owner/$repo/releases/tags/$tag" || true)
@@ -44,4 +54,3 @@ jobs:
               curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/octet-stream' "$(jq -r '.browser_download_url' <<<"$asset")" -o "$aname"
               curl -fsSL -X POST -H "Authorization: token ${GITEA_TOKEN}" -H 'Content-Type: application/octet-stream' "$api/repos/$owner/$repo/releases/$rid/assets?name=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$aname")" --data-binary "@$aname"
             done
-          done
