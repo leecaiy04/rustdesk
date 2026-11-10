@@ -53,7 +53,7 @@ jobs:
             echo "All assets for $tag are already present"
             exit 0
           fi
-          xargs -d '\n' -P 3 -n 3 bash -c '
+          xargs -P 3 -n 3 bash -c '
             set -euo pipefail
             name="$1"; url="$2"; digest="$3"
             curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 --max-time 1800 "$url" -o "$name"
@@ -62,7 +62,7 @@ jobs:
             test "$actual" = "$expected"
             echo "Verified $name"
           ' _ < pending-assets.tsv
-          xargs -d '\n' -P 3 -n 3 bash -c '
+          xargs -P 3 -n 3 bash -c '
             set -euo pipefail
             name="$1"
             curl -fsSL --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 30 --max-time 1800 \
