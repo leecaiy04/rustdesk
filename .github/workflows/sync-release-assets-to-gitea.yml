@@ -53,10 +53,17 @@ jobs:
             echo "All assets for $tag are already present"
             exit 0
           fi
+          if ! command -v aria2c >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y aria2
+          fi
           xargs -P 3 -n 3 bash -c '
             set -euo pipefail
             name="$1"; url="$2"; digest="$3"
-            curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 --max-time 1800 "$url" -o "$name"
+            aria2c --console-log-level=warn --summary-interval=0 \
+              --max-connection-per-server=8 --split=8 --min-split-size=1M \
+              --retry-wait=2 --max-tries=5 --file-allocation=none \
+              --dir=. --out="$name" "$url"
             expected="${digest#sha256:}"
             actual=$(sha256sum "$name" | cut -d" " -f1)
             test "$actual" = "$expected"
