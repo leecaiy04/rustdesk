@@ -10,12 +10,17 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Mirror all branches and tags
+      - name: Check out current source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Push master and release tags
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
           set -euo pipefail
-          git clone --mirror "https://github.com/${{ github.repository }}.git" mirror.git
-          git -C mirror.git remote add gitea "https://leecaiy:${GITEA_TOKEN}@git.222869.xyz:45443/leecaiy/rustdesk.git"
-          git -C mirror.git push --mirror gitea
+          git remote add gitea "https://leecaiy:${GITEA_TOKEN}@git.222869.xyz:45443/leecaiy/rustdesk.git"
+          git fetch --unshallow origin master
+          git push --force gitea HEAD:refs/heads/master
