@@ -1,5 +1,7 @@
 name: Sync to Gitea
 on:
+  push:
+    branches: [master]
   schedule:
     - cron: '17 */6 * * *'
   workflow_dispatch:
@@ -15,5 +17,5 @@ jobs:
         run: |
           set -euo pipefail
           git clone --mirror "https://github.com/${{ github.repository }}.git" mirror.git
-          git -C mirror.git remote set-url --push origin "https://leecaiy:${GITEA_TOKEN}@gitea.222869.xyz:50000/leecaiy/rustdesk.git"
+          git -C mirror.git remote set-url --push origin "https://leecaiy:${GITEA_TOKEN}@git.222869.xyz:45443/leecaiy/rustdesk.git"
           git -C mirror.git push --mirror
