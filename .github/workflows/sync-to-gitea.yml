@@ -22,5 +22,8 @@ jobs:
         run: |
           set -euo pipefail
           export GIT_TERMINAL_PROMPT=0
+          curl -fsS --connect-timeout 10 --max-time 20 -u "leecaiy:${GITEA_TOKEN}" \
+            https://git.222869.xyz:45443/api/v1/user >/dev/null
+          echo 'Forgejo API authentication succeeded'
           git remote add gitea "https://leecaiy:${GITEA_TOKEN}@git.222869.xyz:45443/leecaiy/rustdesk.git"
-          git push --force gitea HEAD:refs/heads/master
+          timeout 900 git push --force gitea HEAD:refs/heads/master
